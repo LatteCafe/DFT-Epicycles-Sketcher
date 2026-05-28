@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOURIER EPICYCLES</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cream:#f3ede1;--ink:#161410;--ink2:#5a5448;--ink3:#9a9088;
+  --panel:#e9e3d3;--panel2:#ddd7c7;--accent:#c0392b;--border:1.5px solid #161410;
+  --faint:rgba(22,20,16,0.07);--faint2:rgba(22,20,16,0.13);
+}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Space Mono','Courier New',monospace;
+  background:var(--cream);color:var(--ink);
+  display:flex;flex-direction:column;
+  user-select:none;-webkit-user-select:none
+}
+
+/* ── HEADER ─────────────────────────────── */
+.hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 14px;border-bottom:var(--border);flex-shrink:0;
+  background:var(--cream);
+}
+.hdr-title{font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase}
+.hdr-sub{font-size:10px;color:var(--ink3);letter-spacing:.08em}
+
+/* ── MAIN ────────────────────────────────── */
+.main{display:flex;flex:1;min-height:0}
+
+/* ── CANVAS AREA ─────────────────────────── */
+.cv-wrap{flex:1;position:relative;overflow:hidden;border-right:var(--border)}
+#cv{display:block;width:100%;height:100%;cursor:crosshair}
+.cv-stats{
+  position:absolute;top:10px;left:12px;font-size:10px;
+  color:var(--ink3);line-height:1.9;pointer-events:none;letter-spacing:.03em
+}
+.cv-stats b{color:var(--ink);font-weight:700}
+.cv-badge{
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  font-size:9px;color:var(--ink3);letter-spacing:.15em;text-transform:uppercase;
+  pointer-events:none;opacity:.55;
+}
+.cv-load{
+  display:none;position:absolute;inset:0;background:rgba(243,237,225,.82);
+  align-items:center;justify-content:center;
+  font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink3);
+  z-index:8
+}
+.cv-load.show{display:flex}
+
+/* ── SIDEBAR ─────────────────────────────── */
+.sb{
+  width:248px;flex-shrink:0;background:var(--panel);
+  overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--ink3) transparent
+}
+.sb-sec{padding:11px 13px;border-bottom:1px solid rgba(22,20,16,.18)}
+.sb-lbl{
+  font-size:8px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:8px
+}
+
+/* shapes grid */
+.sh-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.sh-btn{
+  background:none;border:1px solid var(--ink);color:var(--ink);
+  font-family:inherit;font-size:9px;letter-spacing:.06em;padding:6px 7px;
+  cursor:pointer;text-transform:uppercase;text-align:left;line-height:1.3;
+  transition:background .07s,color .07s
+}
+.sh-btn:hover{background:rgba(22,20,16,.06)}
+.sh-btn.act{background:var(--ink);color:var(--cream)}
+
+/* sliders */
+.sl-row{margin-bottom:10px}
+.sl-row:last-child{margin-bottom:0}
+.sl-hdr{display:flex;justify-content:space-between;margin-bottom:4px;font-size:9px}
+.sl-lbl{color:var(--ink3);text-transform:uppercase;letter-spacing:.1em}
+.sl-val{color:var(--ink);font-weight:700}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;
+  height:2px;background:var(--ink);outline:none;cursor:pointer;border-radius:0
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:10px;height:10px;background:var(--cream);
+  border:2px solid var(--ink);border-radius:0;cursor:pointer
+}
+input[type=range]::-moz-range-thumb{
+  width:10px;height:10px;background:var(--cream);border:2px solid var(--ink);
+  border-radius:0;cursor:pointer
+}
+
+/* action buttons */
+.act-row{display:flex;gap:3px;margin-bottom:3px}
+.act-row:last-child{margin-bottom:0}
+.act-btn{
+  flex:1;background:none;border:1px solid var(--ink);color:var(--ink);
+  font-family:inherit;font-size:9px;letter-spacing:.07em;padding:8px 6px;
+  cursor:pointer;text-transform:uppercase;transition:background .07s,color .07s
+}
+.act-btn:hover{background:rgba(22,20,16,.06)}
+.act-btn.act{background:var(--ink);color:var(--cream)}
+
+/* drop zone */
+.dz{
+  border:1px dashed rgba(22,20,16,.42);padding:12px 10px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:9px;letter-spacing:.07em;color:var(--ink3);
+  cursor:pointer;position:relative;line-height:1.65;text-transform:uppercase;
+  transition:background .09s,border-color .09s
+}
+.dz:hover,.dz.over{background:rgba(22,20,16,.04);border-color:var(--ink);color:var(--ink)}
+.dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.dz-ico{font-size:16px;display:block;margin-bottom:4px}
+.dz-status{font-size:9px;margin-top:5px;min-height:13px;letter-spacing:.04em;color:var(--ink3)}
+.dz-status.ok{color:#27a060}
+.dz-status.err{color:var(--accent)}
+
+/* info strip */
+.info-strip{
+  font-size:8px;color:var(--ink3);letter-spacing:.05em;line-height:1.6;margin-top:7px
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <span class="hdr-title">Fourier Epicycles</span>
+  <span class="hdr-sub">DFT ⟶ Rotating Circles ⟶ Path</span>
+</div>
+
+<div class="main">
+  <div class="cv-wrap">
+    <canvas id="cv"></canvas>
+    <div class="cv-stats">
+      <div>T&nbsp;&nbsp;<b id="st-t">0.000</b></div>
+      <div>N&nbsp;&nbsp;<b id="st-n">—</b></div>
+      <div>FPS <b id="st-fps">—</b></div>
+    </div>
+    <div class="cv-badge" id="cv-badge">heart · 256 samples</div>
+    <div class="cv-load" id="cv-load">Computing DFT…</div>
+  </div>
+
+  <div class="sb">
+    <!-- Shape selector -->
+    <div class="sb-sec">
+      <div class="sb-lbl">Shape</div>
+      <div class="sh-grid">
+        <button class="sh-btn act" data-shape="heart">♥ Heart</button>
+        <button class="sh-btn" data-shape="star">★ Star</button>
+        <button class="sh-btn" data-shape="infinity">∞ Infinity</button>
+        <button class="sh-btn" data-shape="trefoil">✦ Trefoil</button>
+        <button class="sh-btn" data-shape="lissajous">~ Lissajous</button>
+        <button class="sh-btn" data-shape="rose">✿ Rose</button>
+        <button class="sh-btn" data-shape="spiral">◉ Spiral</button>
+        <button class="sh-btn" data-shape="butterfly">❋ Butterfly</button>
+      </div>
+    </div>
+
+    <!-- Parameters -->
+    <div class="sb-sec">
+      <div class="sb-lbl">Parameters</div>
+      <div class="sl-row">
+        <div class="sl-hdr">
+          <span class="sl-lbl">Circles</span>
+          <span class="sl-val" id="v-circles">50</span>
+        </div>
+        <input type="range" id="sl-circles" min="1" max="300" value="50">
+      </div>
+      <div class="sl-row">
+        <div class="sl-header">
+          <div class="sl-hdr">
+            <span class="sl-lbl">Speed</span>
+            <span class="sl-val" id="v-speed">1×</span>
+          </div>
+        </div>
+        <input type="range" id="sl-speed" min="0" max="10" step="0.1" value="1">
+      </div>
+      <div class="sl-row">
+        <div class="sl-hdr">
+          <span class="sl-lbl">Samples</span>
+          <span class="sl-val" id="v-samples">256</span>
+        </div>
+        <input type="range" id="sl-samples" min="64" max="512" step="64" value="256">
+      </div>
+      <div class="sl-row">
+        <div class="sl-hdr">
+          <span class="sl-lbl">Trail</span>
+          <span class="sl-val" id="v-trail">100%</span>
+        </div>
+        <input type="range" id="sl-trail" min="5" max="100" value="100">
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="sb-sec">
+      <div class="sb-lbl">Controls</div>
+      <div class="act-row" style="margin-bottom:4px">
+        <button class="act-btn act" id="btn-play">⏸ Pause</button>
+        <button class="act-btn" id="btn-reset">↺ Reset</button>
+      </div>
+      <div class="act-row">
+        <button class="act-btn" id="btn-circles">◎ Hide Circles</button>
+      </div>
+    </div>
+
+    <!-- SVG Import -->
+    <div class="sb-sec">
+      <div class="sb-lbl">SVG Import</div>
+      <label class="dz" id="dz">
+        <span class="dz-ico">⊕</span>
+        Drop .svg or click to browse
+        <input type="file" id="svg-file" accept=".svg,image/svg+xml">
+      </label>
+      <div class="dz-status" id="dz-status"></div>
+    </div>
+
+    <!-- Info -->
+    <div class="sb-sec">
+      <div class="sb-lbl">About</div>
+      <div class="info-strip">
+        Each circle rotates at a frequency<br>
+        derived from the DFT. Together they<br>
+        trace any 2D shape. More circles =<br>
+        better approximation.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const TAU = Math.PI * 2;
+const CYCLE_FRAMES = 360; // frames per full cycle at speed=1 (60fps ≈ 6s)
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const S = {
+  fourier:    [],    // [{freq, amp, phase}]
+  ghostPts:   [],    // [{x,y}] relative to center — full shape outline
+  path:       [],    // [{x,y}] relative to center — traced points
+  time:       0,     // 0 .. TAU
+  playing:    true,
+  showCircles:true,
+  circleCount:50,
+  speed:      1,
+  samples:    256,
+  trail:      100,
+  shape:      'heart',
+  // FPS
+  fps:0, fpsCount:0, fpsTimer:0,
+};
+
+// ─── CANVAS SETUP ─────────────────────────────────────────────────────────────
+const cv    = document.getElementById('cv');
+const ctx   = cv.getContext('2d');
+const DPR   = window.devicePixelRatio || 1;
+let W=0,H=0,CX=0,CY=0;
+
+function resizeCanvas(){
+  const wrap = cv.parentElement;
+  W = wrap.clientWidth; H = wrap.clientHeight;
+  cv.width = W*DPR; cv.height = H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  CX=W/2; CY=H/2;
+  S.path=[];
+  if(S.fourier.length>0) buildGhost();
+}
+new ResizeObserver(resizeCanvas).observe(cv.parentElement);
+resizeCanvas();
+
+// ─── DFT (Discrete Fourier Transform) ────────────────────────────────────────
+// Treats 2D points as complex z_n = x_n + i*y_n
+// Z_k = Σ z_n * e^{-2πi·k·n/N}   amplitude = |Z_k|/N
+function computeDFT(pts){
+  const N=pts.length;
+  const out=new Array(N);
+  for(let k=0;k<N;k++){
+    let re=0,im=0;
+    for(let n=0;n<N;n++){
+      const phi=(TAU*k*n)/N;
+      const c=Math.cos(phi),s=Math.sin(phi);
+      // z_n·e^{-iφ}: Re = x·cos + y·sin, Im = y·cos - x·sin
+      re += pts[n].x*c + pts[n].y*s;
+      im += pts[n].y*c - pts[n].x*s;
+    }
+    out[k]={
+      freq:k,
+      re:re/N, im:im/N,
+      amp:Math.hypot(re,im)/N,
+      phase:Math.atan2(im,re)
+    };
+  }
+  // Sort by amplitude descending so large circles draw first
+  // Remap frequencies: k > N/2 are negative (counter-rotating)
+  // Without this, k=200 in a 256-pt DFT spins 200×/cycle → spiky radial lines
+  for(let i=0;i<out.length;i++){
+    if(out[i].freq>N/2) out[i].freq-=N;
+  }
+  out.sort((a,b)=>b.amp-a.amp);
+  return out;
+}
+
+// ─── RESAMPLE ─────────────────────────────────────────────────────────────────
+// Redistribute points evenly by arc-length
+function resample(pts,n){
+  if(pts.length<2) return pts;
+  const lens=[0];
+  for(let i=1;i<pts.length;i++){
+    const dx=pts[i].x-pts[i-1].x, dy=pts[i].y-pts[i-1].y;
+    lens.push(lens[i-1]+Math.hypot(dx,dy));
+  }
+  const total=lens[lens.length-1];
+  if(total<1e-9) return pts;
+  const res=[];
+  for(let i=0;i<n;i++){
+    const tgt=(i/n)*total;
+    let lo=0,hi=lens.length-1;
+    while(lo<hi-1){ const m=(lo+hi)>>1; if(lens[m]<=tgt)lo=m; else hi=m; }
+    const span=lens[hi]-lens[lo];
+    const f=span<1e-12?0:(tgt-lens[lo])/span;
+    res.push({
+      x:pts[lo].x+f*(pts[hi].x-pts[lo].x),
+      y:pts[lo].y+f*(pts[hi].y-pts[lo].y)
+    });
+  }
+  return res;
+}
+
+// ─── NORMALIZE ────────────────────────────────────────────────────────────────
+// Scale points so the shape fits ~36% of the canvas in each direction
+function normalize(pts){
+  let mnX=Infinity,mxX=-Infinity,mnY=Infinity,mxY=-Infinity;
+  for(const p of pts){
+    if(p.x<mnX)mnX=p.x; if(p.x>mxX)mxX=p.x;
+    if(p.y<mnY)mnY=p.y; if(p.y>mxY)mxY=p.y;
+  }
+  const rX=mxX-mnX||1, rY=mxY-mnY||1;
+  const maxR=Math.min(W*0.37,H*0.37);
+  const sc=Math.min(maxR/(rX/2),maxR/(rY/2));
+  const mcX=(mnX+mxX)/2, mcY=(mnY+mxY)/2;
+  return pts.map(p=>({x:(p.x-mcX)*sc,y:(p.y-mcY)*sc}));
+}
+
+// ─── SHAPE GENERATORS ─────────────────────────────────────────────────────────
+// Each function returns {x,y} for parameter t ∈ [tMin, tMax]
+const SHAPES={
+  heart:{
+    fn:t=>({
+      x: 16*Math.pow(Math.sin(t),3),
+      y:-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))
+    }),tMin:0,tMax:TAU
+  },
+  star:{
+    fn:t=>{
+      const seg=(t/TAU)*10;
+      const i=Math.floor(seg)%10, f=seg-Math.floor(seg);
+      const v=k=>{
+        const r=k%2===0?1:0.382;
+        const a=-Math.PI/2+(k/10)*TAU;
+        return{x:r*Math.cos(a),y:r*Math.sin(a)};
+      };
+      const p0=v(i),p1=v((i+1)%10);
+      return{x:p0.x+f*(p1.x-p0.x),y:p0.y+f*(p1.y-p0.y)};
+    },tMin:0,tMax:TAU
+  },
+  infinity:{
+    fn:t=>{
+      const d=1+Math.sin(t)*Math.sin(t);
+      return{x:Math.cos(t)/d,y:Math.sin(t)*Math.cos(t)/d};
+    },tMin:0,tMax:TAU
+  },
+  trefoil:{
+    fn:t=>({
+      x:Math.sin(t)+2*Math.sin(2*t),
+      y:-(Math.cos(t)-2*Math.cos(2*t))
+    }),tMin:0,tMax:TAU
+  },
+  lissajous:{
+    fn:t=>({
+      x:Math.sin(3*t+Math.PI/4),
+      y:Math.sin(2*t)
+    }),tMin:0,tMax:TAU
+  },
+  rose:{
+    // 4-petaled rose r=cos(4t), must go 0..TAU for full shape
+    fn:t=>{
+      const r=Math.cos(4*t);
+      return{x:r*Math.cos(t),y:r*Math.sin(t)};
+    },tMin:0,tMax:TAU
+  },
+  spiral:{
+    // Double-lobe spiral — goes out, comes back, closes
+    fn:t=>{
+      const h=Math.PI;
+      const turns=5;
+      const r=t<=h?(t/h)*turns:((TAU-t)/h)*turns;
+      const a=t*turns*2;
+      return{x:r*Math.cos(a),y:r*Math.sin(a)};
+    },tMin:0,tMax:TAU
+  },
+  butterfly:{
+    // Closed butterfly outline: two symmetric wing lobes
+    fn:t=>{
+      const wing=Math.abs(Math.sin(t));
+      const r=wing*(1+0.6*Math.cos(2*t));
+      return{x:r*Math.cos(t),y:r*Math.sin(t)*0.55};
+    },tMin:0,tMax:Math.PI*2
+  }
+};
+
+const RAW_BASE=8192; // fixed high-res base — samples slider only changes DFT resolution, not the shape
+
+function genRawPts(name,n){
+  const sh=SHAPES[name];
+  const{fn,tMin,tMax}=sh;
+  const pts=[];
+  for(let i=0;i<n;i++) pts.push(fn(tMin+(i/n)*(tMax-tMin)));
+  return pts;
+}
+
+// ─── GHOST PATH ───────────────────────────────────────────────────────────────
+// Precomputed full reconstructed outline (using ALL fourier components)
+function buildGhost(){
+  const F=S.fourier;
+  if(!F.length) return;
+  const steps=480;
+  const g=[];
+  for(let i=0;i<steps;i++){
+    const t=(i/steps)*TAU;
+    let x=0,y=0;
+    for(const{amp,freq,phase}of F){
+      const a=freq*t+phase;
+      x+=amp*Math.cos(a);
+      y+=amp*Math.sin(a);
+    }
+    g.push({x,y});
+  }
+  S.ghostPts=g;
+}
+
+// ─── LOAD SHAPE ───────────────────────────────────────────────────────────────
+function loadShape(name,customPts){
+  const ld=document.getElementById('cv-load');
+  ld.classList.add('show');
+  setTimeout(()=>{
+    try{
+      let pts;
+      if(customPts){
+        pts=normalize(resample(customPts,S.samples));
+      } else {
+        const sh=SHAPES[name];
+        const nSamples=sh&&sh.minSamples?Math.max(S.samples,sh.minSamples):S.samples;
+        const raw=genRawPts(name,RAW_BASE);
+        pts=normalize(resample(raw,nSamples));
+      }
+      S.fourier=computeDFT(pts);
+      buildGhost();
+      S.path=[];
+      S.time=0;
+      // update badge
+      const badge=document.getElementById('cv-badge');
+      badge.textContent=(customPts?'custom svg':name)+' · '+S.samples+' samples';
+    }catch(e){console.error('loadShape:',e);}
+    finally{ld.classList.remove('show');}
+  },12);
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+
+function drawGrid(){
+  ctx.save();
+  const sp=48;
+  // minor grid
+  ctx.strokeStyle='rgba(22,20,16,0.045)';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  const ox=((CX%sp)+sp)%sp, oy=((CY%sp)+sp)%sp;
+  for(let x=ox;x<W;x+=sp){ctx.moveTo(x,0);ctx.lineTo(x,H);}
+  for(let y=oy;y<H;y+=sp){ctx.moveTo(0,y);ctx.lineTo(W,y);}
+  ctx.stroke();
+  // axes
+  ctx.strokeStyle='rgba(22,20,16,0.10)';
+  ctx.lineWidth=.75;
+  ctx.setLineDash([3,6]);
+  ctx.beginPath();
+  ctx.moveTo(CX,0);ctx.lineTo(CX,H);
+  ctx.moveTo(0,CY);ctx.lineTo(W,CY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawGhost(){
+  const g=S.ghostPts;
+  if(g.length<2) return;
+  ctx.beginPath();
+  ctx.moveTo(CX+g[0].x,CY+g[0].y);
+  for(let i=1;i<g.length;i++) ctx.lineTo(CX+g[i].x,CY+g[i].y);
+  ctx.closePath();
+  ctx.strokeStyle='rgba(22,20,16,0.09)';
+  ctx.lineWidth=.75;
+  ctx.stroke();
+}
+
+// Returns tip {x,y} relative to canvas (absolute)
+function drawEpicycles(t){
+  const F=S.fourier;
+  const count=Math.min(S.circleCount,F.length);
+  let x=CX,y=CY;
+
+  if(!S.showCircles){
+    // Fast path — just compute tip
+    for(let i=0;i<count;i++){
+      const{amp,freq,phase}=F[i];
+      const a=freq*t+phase;
+      x+=amp*Math.cos(a);
+      y+=amp*Math.sin(a);
+    }
+    return{x,y};
+  }
+
+  // Draw circles batch first (less context switching)
+  for(let i=0;i<count;i++){
+    const{amp}=F[i];
+    if(amp<0.8) continue;
+    // Compute center position up to this circle
+    let cx2=CX,cy2=CY;
+    for(let j=0;j<i;j++){
+      const a2=F[j].freq*t+F[j].phase;
+      cx2+=F[j].amp*Math.cos(a2);
+      cy2+=F[j].amp*Math.sin(a2);
+    }
+    const alpha=Math.min(.22,.04+amp/120);
+    ctx.beginPath();
+    ctx.arc(cx2,cy2,amp,0,TAU);
+    ctx.strokeStyle=`rgba(22,20,16,${alpha})`;
+    ctx.lineWidth=.5;
+    ctx.stroke();
+  }
+
+  // Draw radii
+  ctx.lineWidth=.8;
+  for(let i=0;i<count;i++){
+    const{amp,freq,phase}=F[i];
+    const a=freq*t+phase;
+    const nx=x+amp*Math.cos(a), ny=y+amp*Math.sin(a);
+    const alpha=Math.min(.55,.06+amp/60);
+    ctx.beginPath();
+    ctx.moveTo(x,y);ctx.lineTo(nx,ny);
+    ctx.strokeStyle=`rgba(22,20,16,${alpha})`;
+    ctx.stroke();
+    x=nx; y=ny;
+  }
+  return{x,y};
+}
+
+// If showCircles=false tip was returned already,
+// but we need to do a single-pass if circles are shown
+// Refactored: always do a single clean pass
+function computeEpicyclesFast(t){
+  const F=S.fourier;
+  const count=Math.min(S.circleCount,F.length);
+  let x=CX,y=CY;
+
+  if(!S.showCircles){
+    for(let i=0;i<count;i++){
+      const{amp,freq,phase}=F[i];
+      x+=amp*Math.cos(freq*t+phase);
+      y+=amp*Math.sin(freq*t+phase);
+    }
+    return{x,y};
+  }
+
+  // With circles shown — single pass, track positions
+  const positions=[{x:CX,y:CY}];
+  for(let i=0;i<count;i++){
+    const{amp,freq,phase}=F[i];
+    const a=freq*t+phase;
+    x+=amp*Math.cos(a);
+    y+=amp*Math.sin(a);
+    positions.push({x,y});
+  }
+
+  // Draw circles
+  for(let i=0;i<count;i++){
+    const{amp}=F[i];
+    if(amp<0.8) continue;
+    const c=positions[i];
+    const alpha=Math.min(.22,.035+amp/150);
+    ctx.beginPath();
+    ctx.arc(c.x,c.y,amp,0,TAU);
+    ctx.strokeStyle=`rgba(22,20,16,${alpha})`;
+    ctx.lineWidth=.5;
+    ctx.stroke();
+  }
+  // Draw radii
+  for(let i=0;i<count;i++){
+    const{amp}=F[i];
+    const p0=positions[i], p1=positions[i+1];
+    const alpha=Math.min(.6,.05+amp/70);
+    ctx.beginPath();
+    ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);
+    ctx.strokeStyle=`rgba(22,20,16,${alpha})`;
+    ctx.lineWidth=.9;
+    ctx.stroke();
+  }
+  return{x,y};
+}
+
+function drawTrace(){
+  const path=S.path;
+  if(path.length<2) return;
+  // Apply trail slider to determine visible portion
+  const visLen=Math.max(2,Math.ceil(path.length*(S.trail/100)));
+  const si=path.length-visLen;
+  // Split into segments with rising opacity: old=transparent, new=opaque
+  const SEGS=28;
+  const segLen=Math.ceil(visLen/SEGS);
+  ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=1.6;
+  for(let s=0;s<SEGS;s++){
+    const segStart=si+s*segLen;
+    const segEnd=Math.min(si+(s+1)*segLen+1,path.length);
+    if(segStart>=path.length-1) break;
+    // ease-in^2 so the leading edge is crisp and the tail fades softly
+    const frac=(s+1)/SEGS;
+    const alpha=frac*frac;
+    ctx.beginPath();
+    ctx.moveTo(CX+path[segStart].x,CY+path[segStart].y);
+    for(let i=segStart+1;i<segEnd;i++) ctx.lineTo(CX+path[i].x,CY+path[i].y);
+    ctx.strokeStyle=`rgba(22,20,16,${alpha.toFixed(3)})`;
+    ctx.stroke();
+  }
+}
+
+function drawTip(tx,ty){
+  // Outer halo
+  ctx.beginPath();
+  ctx.arc(tx,ty,8,0,TAU);
+  ctx.strokeStyle='rgba(192,57,43,.18)';
+  ctx.lineWidth=2;
+  ctx.stroke();
+  // Inner dot
+  ctx.beginPath();
+  ctx.arc(tx,ty,3.5,0,TAU);
+  ctx.fillStyle='#c0392b';
+  ctx.fill();
+}
+
+// ─── ANIMATION LOOP ───────────────────────────────────────────────────────────
+let prevTs=0;
+function frame(ts){
+  // FPS
+  S.fpsCount++;
+  if(ts-S.fpsTimer>=1000){
+    S.fps=S.fpsCount;S.fpsCount=0;S.fpsTimer=ts;
+  }
+
+  // Advance time
+  if(S.playing && S.fourier.length>0){
+    const dt=(TAU/CYCLE_FRAMES)*S.speed;
+    S.time+=dt;
+    if(S.time>=TAU) S.time-=TAU;
+  }
+
+  // Clear
+  ctx.fillStyle='#f3ede1';
+  ctx.fillRect(0,0,W,H);
+
+  drawGrid();
+  drawGhost();
+
+  if(S.fourier.length>0){
+    const{x:tx,y:ty}=computeEpicyclesFast(S.time);
+
+    // Record path point — cap to exactly one full cycle at current speed
+    if(S.playing){
+      S.path.push({x:tx-CX,y:ty-CY});
+      const maxLen=S.speed>0?Math.max(4,Math.round(CYCLE_FRAMES/S.speed)):CYCLE_FRAMES;
+      if(S.path.length>maxLen) S.path.splice(0,S.path.length-maxLen);
+    }
+
+    drawTrace();
+    drawTip(tx,ty);
+  }
+
+  // Overlay stats
+  document.getElementById('st-t').textContent=(S.time/TAU).toFixed(3);
+  document.getElementById('st-n').textContent=Math.min(S.circleCount,S.fourier.length);
+  document.getElementById('st-fps').textContent=S.fps;
+
+  requestAnimationFrame(frame);
+}
+
+// ─── SVG PARSING ─────────────────────────────────────────────────────────────
+function parseSVG(text){
+  const dp=new DOMParser();
+  const doc=dp.parseFromString(text,'image/svg+xml');
+  const svgEl=doc.querySelector('svg');
+  if(!svgEl) throw new Error('No <svg> element found');
+
+  let vbX=0,vbY=0,vbW=100,vbH=100;
+  const vb=svgEl.getAttribute('viewBox');
+  if(vb){
+    const v=vb.trim().split(/[\s,]+/).map(Number);
+    [vbX,vbY,vbW,vbH]=v;
+  } else {
+    vbW=parseFloat(svgEl.getAttribute('width'))||100;
+    vbH=parseFloat(svgEl.getAttribute('height'))||100;
+  }
+  const offX=vbX+vbW/2, offY=vbY+vbH/2;
+
+  const allPts=[];
+
+  // Temporary container to use browser's SVG geometry APIs
+  const tmp=document.createElement('div');
+  tmp.style.cssText='position:fixed;left:-9999px;top:0;visibility:hidden;pointer-events:none;';
+  document.body.appendChild(tmp);
+
+  function sampleGeomEl(el){
+    const tmpSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    // Give the temp SVG the same coordinate space as the source so getTotalLength works
+    tmpSvg.setAttribute('viewBox',`${vbX} ${vbY} ${vbW} ${vbH}`);
+    tmpSvg.setAttribute('width',String(vbW));
+    tmpSvg.setAttribute('height',String(vbH));
+    const clone=el.cloneNode(true);
+    tmpSvg.appendChild(clone);
+    tmp.appendChild(tmpSvg);
+    try{
+      let len=0;
+      try{len=clone.getTotalLength();}catch(e){}
+      if(len>0){
+        const steps=Math.min(800,Math.ceil(len/1.5));
+        for(let i=0;i<=steps;i++){
+          const pt=clone.getPointAtLength((i/steps)*len);
+          allPts.push({x:pt.x-offX,y:pt.y-offY});
+        }
+      }
+    }finally{tmp.removeChild(tmpSvg);}
+  }
+
+  svgEl.querySelectorAll('path,circle,ellipse,rect').forEach(sampleGeomEl);
+
+  svgEl.querySelectorAll('polygon,polyline').forEach(el=>{
+    const raw=(el.getAttribute('points')||'').trim().split(/[\s,]+/).map(Number);
+    for(let i=0;i<raw.length-1;i+=2)
+      allPts.push({x:raw[i]-offX,y:raw[i+1]-offY});
+    if(el.tagName.toLowerCase()==='polygon'&&allPts.length)
+      allPts.push({...allPts[0]});
+  });
+
+  document.body.removeChild(tmp);
+  if(allPts.length<4) throw new Error(`Only ${allPts.length} points found in SVG`);
+  return allPts;
+}
+
+function handleSVGFile(file){
+  const st=document.getElementById('dz-status');
+  st.className='dz-status'; st.textContent='Reading…';
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const pts=parseSVG(e.target.result);
+      st.className='dz-status ok';
+      st.textContent=`✓ ${pts.length} pts from SVG`;
+      S.shape='_custom';
+      document.querySelectorAll('.sh-btn').forEach(b=>b.classList.remove('act'));
+      document.getElementById('cv-badge').textContent='custom svg · '+S.samples+' samples';
+      loadShape('_custom',pts);
+    }catch(err){
+      st.className='dz-status err';
+      st.textContent='✗ '+err.message;
+    }
+  };
+  rd.onerror=()=>{
+    st.className='dz-status err';
+    st.textContent='✗ File read error';
+  };
+  rd.readAsText(file);
+}
+
+// ─── UI BINDINGS ─────────────────────────────────────────────────────────────
+
+// Shape buttons
+document.querySelectorAll('.sh-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.sh-btn').forEach(b=>b.classList.remove('act'));
+    btn.classList.add('act');
+    S.shape=btn.dataset.shape;
+    loadShape(S.shape);
+  });
+});
+
+// Generic slider binder
+function bindSl(id,valId,setter,fmt){
+  const el=document.getElementById(id);
+  const vl=document.getElementById(valId);
+  el.addEventListener('input',()=>{
+    const v=+el.value;
+    setter(v);
+    vl.textContent=fmt?fmt(v):v;
+  });
+}
+
+bindSl('sl-circles','v-circles',v=>S.circleCount=v);
+bindSl('sl-speed','v-speed',v=>S.speed=v,v=>(+v===0?'0':Number(v)%1===0?v+'':parseFloat(v).toFixed(1))+'×');
+bindSl('sl-samples','v-samples',v=>{
+  S.samples=v;
+  if(S.shape!=='_custom') loadShape(S.shape);
+  else document.getElementById('cv-badge').textContent='custom svg · '+v+' samples';
+});
+bindSl('sl-trail','v-trail',v=>S.trail=v,v=>v+'%');
+
+// Play / Pause
+const btnPlay=document.getElementById('btn-play');
+btnPlay.addEventListener('click',()=>{
+  S.playing=!S.playing;
+  btnPlay.classList.toggle('act',S.playing);
+  btnPlay.textContent=S.playing?'⏸ Pause':'▶ Play';
+});
+
+// Reset
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  S.time=0; S.path=[];
+});
+
+// Toggle circles
+const btnC=document.getElementById('btn-circles');
+btnC.addEventListener('click',()=>{
+  S.showCircles=!S.showCircles;
+  btnC.textContent=S.showCircles?'◎ Hide Circles':'◎ Show Circles';
+});
+
+// SVG file input
+document.getElementById('svg-file').addEventListener('change',e=>{
+  const f=e.target.files[0];
+  if(f) handleSVGFile(f);
+  e.target.value='';
+});
+
+// Drag and drop
+const dzEl=document.getElementById('dz');
+dzEl.addEventListener('dragenter',e=>{e.preventDefault();dzEl.classList.add('over');});
+dzEl.addEventListener('dragover',e=>e.preventDefault());
+dzEl.addEventListener('dragleave',()=>dzEl.classList.remove('over'));
+dzEl.addEventListener('drop',e=>{
+  e.preventDefault();dzEl.classList.remove('over');
+  const f=e.dataTransfer.files[0];
+  if(f&&(f.name.endsWith('.svg')||f.type==='image/svg+xml')) handleSVGFile(f);
+});
+
+// Keyboard shortcuts
+window.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  if(e.code==='Space'){e.preventDefault();btnPlay.click();}
+  if(e.code==='KeyR') document.getElementById('btn-reset').click();
+  if(e.code==='KeyC') btnC.click();
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadShape('heart');
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
